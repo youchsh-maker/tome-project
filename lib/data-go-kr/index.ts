@@ -1,6 +1,12 @@
 const BASE = "https://apis.data.go.kr/B553766/facility";
 
-export class FacilityApiError extends Error {}
+/** Every failure is logged here so the cause shows in the server logs even though pages only show a generic error. */
+export class FacilityApiError extends Error {
+  constructor(message: string) {
+    super(message);
+    console.error(`[data-go-kr] ${message}`);
+  }
+}
 
 /** Calls a Seoul Metro facility endpoint on the server and returns its items. */
 export async function fetchFacilityItems(
