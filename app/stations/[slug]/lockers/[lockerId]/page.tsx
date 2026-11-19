@@ -2,11 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { LoadError } from "@/components/load-error";
+import { LockerMap } from "@/components/locker-map";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchElevators, type Elevator } from "@/features/elevators";
-import { fetchLockers, formatUpdatedAt, lockerTitle, todayFor, type Locker } from "@/features/lockers";
+import { fetchLockers, formatUpdatedAt, hasFree, lockerTitle, todayFor, type Locker } from "@/features/lockers";
 import { buildStations, findStation } from "@/features/stations";
 
 export default async function LockerPage({ params }: PageProps<"/stations/[slug]/lockers/[lockerId]">) {
@@ -52,10 +53,22 @@ export default async function LockerPage({ params }: PageProps<"/stations/[slug]
           <CardTitle>Where the locker is</CardTitle>
           <CardDescription>Location in Korean. You can show this to station staff if you need help.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-3">
           <p lang="ko" className="text-lg font-medium">
             {locker.detailKo}
           </p>
+          <LockerMap
+            label={`Map of ${lockerTitle(locker)} at ${station.nameEn}`}
+            points={[
+              {
+                id: locker.id,
+                lat: locker.lat,
+                lon: locker.lon,
+                label: `${station.nameEn} · ${lockerTitle(locker)}`,
+                free: hasFree(locker),
+              },
+            ]}
+          />
         </CardContent>
       </Card>
 
