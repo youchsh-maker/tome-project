@@ -122,6 +122,12 @@ describe("availability", () => {
     expect(hasFree(l)).toBe(true);
   });
 
+  it("with a size filter, counts only free compartments of that size", () => {
+    const [smallOnly] = normalizeLockers([raw({ ...NONE, usePsbltySmttypeLckrCnt: 5 })]);
+    const [oneLarge] = normalizeLockers([raw({ ...NONE, usePsbltyLrtypeLckrCnt: 1 })]);
+    expect([hasFree(smallOnly, "Large"), hasFree(oneLarge, "Large")]).toEqual([false, true]);
+  });
+
   it("treats all-zero counts as no free compartment", () => {
     const [l] = normalizeLockers([raw(NONE)]);
     expect(hasFree(l)).toBe(false);
@@ -180,6 +186,18 @@ describe("nearby fallback", () => {
     const near = findFreeNear(lockers, { lat: 37.5006, lon: 127.0364 }, 2);
     expect(near.map((n) => n.locker.id)).toEqual(["YEOKSAM", "SEOLLEUNG"]);
     expect(near[0].distanceM).toBeLessThan(10);
+  });
+
+  it("with a size filter, skips nearby lockers without that size free", () => {
+    const sized = normalizeLockers([
+      raw({ lckrId: "G", stnNm: "강남", LAT: 37.4979, LOT: 127.0276, ...NONE }),
+      raw({ lckrId: "YEOKSAM_SMALL", stnNm: "역삼", LAT: 37.5006, LOT: 127.0364, ...NONE, usePsbltySmttypeLckrCnt: 4 }),
+      raw({ lckrId: "GYODAE_LARGE", stnNm: "교대", LAT: 37.4934, LOT: 127.0142, ...NONE, usePsbltyLrtypeLckrCnt: 2 }),
+    ]);
+    expect(findNearbyFree(sized, "강남", 3, "Large").map((n) => n.locker.id)).toEqual(["GYODAE_LARGE"]);
+    expect(findFreeNear(sized, { lat: 37.5006, lon: 127.0364 }, 5, "Large").map((n) => n.locker.id)).toEqual([
+      "GYODAE_LARGE",
+    ]);
   });
 
   it("formats distance in m or km", () => {

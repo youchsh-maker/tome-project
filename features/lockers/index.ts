@@ -131,7 +131,9 @@ export function normalizeLockers(raw: RawLocker[]): Locker[] {
     }));
 }
 
-export function hasFree(l: Locker): boolean {
+/** Whether the locker has a free compartment, of the given size when one is given. */
+export function hasFree(l: Locker, size?: Size): boolean {
+  if (size) return l.available[size] > 0;
   return l.available.Large + l.available.Medium + l.available.Small > 0;
 }
 
@@ -172,22 +174,23 @@ function distanceM(a: { lat: number; lon: number }, b: { lat: number; lon: numbe
 }
 
 /** Free lockers nearest to a point (e.g. an area center), straight-line distance. */
-export function findFreeNear(lockers: Locker[], point: { lat: number; lon: number }, limit = 5) {
+export function findFreeNear(lockers: Locker[], point: { lat: number; lon: number }, limit = 5, size?: Size) {
   return lockers
-    .filter(hasFree)
+    .filter((l) => hasFree(l, size))
     .map((locker) => ({ locker, distanceM: distanceM(point, locker) }))
     .sort((a, b) => a.distanceM - b.distanceM)
     .slice(0, limit);
 }
 
 /** Free lockers at other stations, nearest to the given station first (straight-line distance). */
-export function findNearbyFree(lockers: Locker[], stationKo: string, limit = 3) {
+export function findNearbyFree(lockers: Locker[], stationKo: string, limit = 3, size?: Size) {
   const origin = lockers.find((l) => l.stationKo === stationKo);
   if (!origin) return [];
   return findFreeNear(
     lockers.filter((l) => l.stationKo !== stationKo),
     origin,
     limit,
+    size,
   );
 }
 
@@ -206,4 +209,9 @@ export function lockerTitle(l: Locker): string {
 
 export async function fetchLockers(): Promise<Locker[]> {
   return normalizeLockers(await fetchFacilityItems("/getFcLckr"));
+}
+
+/** Reads the `size` search param; only "large" is offered as a filter. */
+export function sizeFilterFrom(value: unknown): Size | undefined {
+  return value === "large" ? "Large" : undefined;
 }
