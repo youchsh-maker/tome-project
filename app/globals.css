@@ -141,3 +141,60 @@
   stroke: var(--background);
   stroke-width: 2;
 }
+
+/* Overview map on the home page: soft pastel tiles and speech-bubble markers */
+.locker-map-overview .leaflet-tile-pane {
+  filter: saturate(0.55) brightness(1.06) hue-rotate(-8deg);
+}
+.locker-bubble {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 2px solid var(--background);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.18);
+  transition: transform 0.15s ease;
+}
+.locker-bubble::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  bottom: -7px;
+  border: 5px solid transparent;
+  border-top-color: inherit;
+}
+.locker-bubble:hover {
+  transform: translateY(-2px) scale(1.08);
+}
+.locker-bubble-free,
+.locker-legend-free {
+  background: oklch(0.9 0.09 155);
+  color: oklch(0.35 0.08 155);
+}
+.locker-bubble-free::after {
+  border-top-color: oklch(0.9 0.09 155);
+}
+.locker-bubble-full,
+.locker-legend-full {
+  background: oklch(0.9 0.04 20);
+  color: oklch(0.45 0.05 20);
+}
+.locker-bubble-full::after {
+  border-top-color: oklch(0.9 0.04 20);
+}
+/* Zoomed out: each station is a small pastel dot; counts appear from zoom 13 (see LockerMap). */
+.locker-map-overview:not(.show-counts) .locker-bubble {
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  font-size: 0;
+  border-width: 2px;
+}
+.locker-map-overview:not(.show-counts) .locker-bubble::after {
+  display: none;
+}

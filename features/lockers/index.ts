@@ -133,10 +133,13 @@ export function normalizeLockers(raw: RawLocker[]): Locker[] {
     }));
 }
 
-/** Whether the locker has a free compartment, of the given size when one is given. */
-export function hasFree(l: Locker, size?: Size): boolean {
-  if (size) return l.available[size] > 0;
-  return l.available.Large + l.available.Medium + l.available.Small > 0;
+/** Search filter: a compartment size (any size when absent) and the minimum number free. */
+export type LockerFilter = { size?: Size; min: number };
+
+/** Whether the locker has enough free compartments: of the filter's size, or in total for any size. */
+export function hasFree(l: Locker, filter?: LockerFilter): boolean {
+  const count = filter?.size ? l.available[filter.size] : l.available.Large + l.available.Medium + l.available.Small;
+  return count >= (filter?.min ?? 1);
 }
 
 function seoulWeekday(now: Date): number {
@@ -176,28 +179,34 @@ function distanceM(a: { lat: number; lon: number }, b: { lat: number; lon: numbe
 }
 
 /** Free lockers nearest to a point (e.g. an area center), straight-line distance. */
-export function findFreeNear(lockers: Locker[], point: { lat: number; lon: number }, limit = 5, size?: Size) {
+export function findFreeNear(
+  lockers: Locker[],
+  point: { lat: number; lon: number },
+  limit = 5,
+  filter?: LockerFilter,
+) {
   return lockers
-    .filter((l) => hasFree(l, size))
+    .filter((l) => hasFree(l, filter))
     .map((locker) => ({ locker, distanceM: distanceM(point, locker) }))
     .sort((a, b) => a.distanceM - b.distanceM)
     .slice(0, limit);
 }
 
 /** Free lockers at other stations, nearest to the given station first (straight-line distance). */
-export function findNearbyFree(lockers: Locker[], stationKo: string, limit = 3, size?: Size) {
+export function findNearbyFree(lockers: Locker[], stationKo: string, limit = 3, filter?: LockerFilter) {
   const origin = lockers.find((l) => l.stationKo === stationKo);
   if (!origin) return [];
   return findFreeNear(
     lockers.filter((l) => l.stationKo !== stationKo),
     origin,
     limit,
-    size,
+    filter,
   );
 }
 
 export function formatDistance(m: number): string {
-  return m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`;
+  const rounded = Math.round(m / 10) * 10;
+  return rounded < 1000 ? `${rounded} m` : `${(m / 1000).toFixed(1)} km`;
 }
 
 /** English heading for a locker from its line and compartment range, e.g. "Line 2 · Lockers 1–52". */
@@ -228,9 +237,30 @@ export async function fetchLockers(): Promise<Locker[]> {
   return [...lockers, ...normalizeMoisLockers({ info, realtime, detail }, new Set(seoulMetro.map((r) => str(r.lckrId))))];
 }
 
-/** Reads the `size` search param; only "large" is offered as a filter. */
-export function sizeFilterFrom(value: unknown): Size | undefined {
-  return value === "large" ? "Large" : undefined;
+export const SIZE_OPTIONS: Size[] = ["Small", "Medium", "Large"];
+export const MIN_OPTIONS = [1, 2, 3, 5];
+
+/** Reads `size` (small/medium/large) and `min` (1/2/3/5) search params; undefined means no filter. */
+export function filterFrom(params: { size?: unknown; min?: unknown }): LockerFilter | undefined {
+  const size = SIZE_OPTIONS.find((s) => s.toLowerCase() === params.size);
+  const min = MIN_OPTIONS.find((n) => String(n) === params.min) ?? 1;
+  if (!size && min === 1) return undefined;
+  return size ? { size, min } : { min };
+}
+
+/** The filter as query params for links, e.g. "size=large&min=2"; empty when there is no filter. */
+export function filterQuery(filter: LockerFilter | undefined): string {
+  if (!filter) return "";
+  return [filter.size && `size=${filter.size.toLowerCase()}`, filter.min > 1 && `min=${filter.min}`]
+    .filter(Boolean)
+    .join("&");
+}
+
+/** English phrase for messages, e.g. "2 or more free Large compartments". */
+export function describeFilter(filter: LockerFilter | undefined): string {
+  const size = filter?.size ? `${filter.size} ` : "";
+  const min = filter?.min ?? 1;
+  return min > 1 ? `${min} or more free ${size}compartments` : `a free ${size}compartment`;
 }
 
 type MoisRow = Record<string, unknown>;
@@ -280,4 +310,23 @@ export function normalizeMoisLockers(
     });
   }
   return normalizeLockers(raw);
+}
+
+export type StationSummary = { stationKo: string; lat: number; lon: number; available: Record<Size, number>; total: number };
+/** One entry per station: free compartments added up across its lockers, placed at their average position. */
+export function summarizeByStation(lockers: Locker[]): StationSummary[] {
+  const groups = new Map<string, Locker[]>();
+  for (const l of lockers) groups.set(l.stationKo, [...(groups.get(l.stationKo) ?? []), l]);
+  return [...groups].map(([stationKo, ls]) => {
+    const sum = (size: Size) => ls.reduce((n, l) => n + l.available[size], 0);
+    const available = { Large: sum("Large"), Medium: sum("Medium"), Small: sum("Small") };
+    const avg = (pick: (l: Locker) => number) => Math.round((ls.reduce((n, l) => n + pick(l), 0) / ls.length) * 1e6) / 1e6;
+    return {
+      stationKo,
+      lat: avg((l) => l.lat),
+      lon: avg((l) => l.lon),
+      available,
+      total: available.Large + available.Medium + available.Small,
+    };
+  });
 }
