@@ -9,7 +9,11 @@ export type Elevator = {
   /** "platform": connects the platform to the concourse. "exit": connects street level to the station. */
   kind: "platform" | "exit";
   exit: string;
+  /** Exit numbers this elevator serves (empty for platform elevators). */
+  exits: string[];
   floors: string;
+  /** The station-side floor the elevator takes you to: the concourse for platform elevators. */
+  arrivesAt: string;
   status: "in-service" | "out-of-service" | "unknown";
   statusLabel: string;
   /** English location from the pre-translated table; null when the sentence is not in the table. */
@@ -49,8 +53,12 @@ export function normalizeElevators(raw: RawElevator[], stationKo: string): Eleva
   return raw
     .filter((r) => str(r.stnNm) === stationKo)
     .map((r) => {
-      const numbers = exitNumbers(str(r.vcntEntrcNo));
-      const kind = numbers ? "exit" : "platform";
+      // The operator labels each elevator 외부 (street ↔ station) or 내부 (station ↔ platform) in its name.
+      const label = `${str(r.fcltNm)} ${str(r.mngNo)}`;
+      const labelled = /외부/.test(label) ? "exit" : /내부/.test(label) ? "platform" : null;
+      const numbers =
+        exitNumbers(str(r.vcntEntrcNo)) ?? (labelled === "exit" ? str(r.fcltNm).match(/[\d,]+(?=번\s*출)/)?.[0].split(",") ?? null : null);
+      const kind = labelled ?? (numbers ? "exit" : "platform");
       const a = floor(str(r.bgngFlrGrndUdgdSe), str(r.bgngFlr));
       const b = floor(str(r.endFlrGrndUdgdSe), str(r.endFlr));
       // Exit elevators read from the street; platform elevators read from where you leave the train.
@@ -59,8 +67,10 @@ export function normalizeElevators(raw: RawElevator[], stationKo: string): Eleva
       return {
         id: str(r.fcltNo),
         kind,
-        exit: exitLabel(numbers),
+        exit: kind === "exit" && !numbers ? "Street elevator" : exitLabel(kind === "exit" ? numbers : null),
+        exits: kind === "exit" ? (numbers ?? []) : [],
         floors: `${from.label} → ${to.label}`,
+        arrivesAt: to.label,
         status,
         statusLabel,
         detailEn: EN[str(r.dtlPstn)] ?? null,

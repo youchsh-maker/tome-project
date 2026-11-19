@@ -26,6 +26,9 @@ export type Locker = {
   fees: Fees | null;
   hours: { weekday: [string, string]; saturday: [string, string]; holiday: [string, string] };
   dimensions: Partial<Record<Size, string>>;
+  exits: string[];
+  floor: string | null;
+  gates: "inside" | "outside" | null;
 };
 
 const SIZES: Size[] = ["Large", "Medium", "Small"];
@@ -70,6 +73,31 @@ function parseDimensions(r: RawLocker): Partial<Record<Size, string>> {
   return out;
 }
 
+/** Exit numbers named in the Korean location, e.g. "4.6번 출구" → ["4", "6"], "3~5번" → ["3", "4", "5"]. */
+function exitsIn(text: string): string[] {
+  const out: string[] = [];
+  for (const m of text.matchAll(/(\d+(?:\s*[,.~]\s*\d+)*)\s*번\s*(?:출입구|출구)/g)) {
+    for (const part of m[1].split(/\s*[,.]\s*/)) {
+      const [from, to] = part.split(/\s*~\s*/).map(Number);
+      if (to) for (let i = from; i <= to; i++) out.push(String(i));
+      else out.push(String(from));
+    }
+  }
+  return [...new Set(out)];
+}
+
+/** Underground level named in the Korean location ("지하2층" or "B2층"), e.g. "B2". */
+function floorIn(text: string): string | null {
+  const m = text.match(/지하\s*(\d)\s*층|B(\d)\s*층?/);
+  return m ? `B${m[1] ?? m[2]}` : null;
+}
+
+function gatesIn(text: string): "inside" | "outside" | null {
+  if (/게이트\s*(내부|안)/.test(text)) return "inside";
+  if (/게이트\s*(외부|밖)/.test(text)) return "outside";
+  return null;
+}
+
 /** Normalizes Seoul Metro locker items. Line 9 is outside the service scope. */
 export function normalizeLockers(raw: RawLocker[]): Locker[] {
   return raw
@@ -92,6 +120,9 @@ export function normalizeLockers(raw: RawLocker[]): Locker[] {
       feeRaw: str(r.utztnCrgExpln),
       fees: parseFees(str(r.utztnCrgExpln)),
       dimensions: parseDimensions(r),
+      exits: exitsIn(str(r.lckrDtlLocNm)),
+      floor: floorIn(str(r.lckrDtlLocNm)),
+      gates: gatesIn(str(r.lckrDtlLocNm)),
       hours: {
         weekday: [str(r.wkdayOperBgngTm), str(r.wkdayOperEndTm)],
         saturday: [str(r.satOperBgngTm), str(r.satOperEndTm)],

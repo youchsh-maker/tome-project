@@ -92,6 +92,30 @@ describe("compartment sizes", () => {
   });
 });
 
+describe("route hints from the Korean location", () => {
+  const hints = (text: string) => {
+    const [l] = normalizeLockers([raw({ lckrDtlLocNm: text })]);
+    return { exits: l.exits, floor: l.floor, gates: l.gates };
+  };
+
+  it("reads exit numbers, ranges, and the floor", () => {
+    expect(hints("지하2층 4.6번 출구 방면 고객안전실 옆")).toEqual({ exits: ["4", "6"], floor: "B2", gates: null });
+    expect(hints("지하1층 대합실 3~5번 출구 방면")).toEqual({ exits: ["3", "4", "5"], floor: "B1", gates: null });
+    expect(hints("화곡역 B1층 3,4번 출구 방면")).toMatchObject({ exits: ["3", "4"], floor: "B1" });
+  });
+
+  it("reads whether the locker is inside or outside the ticket gates", () => {
+    expect(hints("10번 출입구 게이트 내부").gates).toBe("inside");
+    expect(hints("1번 출입구 9호선 환승게이트 주변(게이트 안)").gates).toBe("inside");
+    expect(hints("2번 출입구 게이트 밖").gates).toBe("outside");
+    expect(hints("1,2번 출입구 사이 게이트 주변").gates).toBeNull();
+  });
+
+  it("leaves hints empty when the sentence has none", () => {
+    expect(hints("대합실")).toEqual({ exits: [], floor: null, gates: null });
+  });
+});
+
 describe("availability", () => {
   it("counts a locker with at least one free compartment of any size as free", () => {
     const [l] = normalizeLockers([raw({ ...NONE, usePsbltySmttypeLckrCnt: 1 })]);

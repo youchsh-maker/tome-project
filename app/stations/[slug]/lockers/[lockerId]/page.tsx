@@ -59,8 +59,26 @@ export default async function LockerPage({ params }: PageProps<"/stations/[slug]
   }
 
   const today = todayFor(locker, new Date());
-  const platformElevators = elevators.filter((e) => e.kind === "platform");
-  const exitElevators = elevators.filter((e) => e.kind === "exit");
+  // The data has no locker-to-elevator distance, so match on what the location sentences share:
+  // the locker's floor for platform elevators and its exit numbers for street elevators.
+  const noteFor = (e: Elevator) =>
+    e.kind === "platform"
+      ? locker.floor && e.arrivesAt === locker.floor
+        ? `Arrives on the locker's level (${locker.floor})`
+        : null
+      : e.exits.some((x) => locker.exits.includes(x))
+        ? "Same exit as the locker"
+        : null;
+  const nearFirst = (list: Elevator[]) =>
+    [...list].sort((a, b) => Number(noteFor(b) !== null) - Number(noteFor(a) !== null));
+  const platformElevators = nearFirst(elevators.filter((e) => e.kind === "platform"));
+  const exitElevators = nearFirst(elevators.filter((e) => e.kind === "exit"));
+  const hints = [
+    locker.floor && `The locker is on the ${locker.floor} level.`,
+    locker.exits.length > 0 && `On the concourse, follow the signs for ${exitsText(locker.exits)}.`,
+    locker.gates === "inside" && "It is inside the ticket gates, so you do not need to tap out.",
+    locker.gates === "outside" && "It is outside the ticket gates: tap your card at the gate first.",
+  ].filter((h): h is string => Boolean(h));
 
   return (
     <>
@@ -88,12 +106,19 @@ export default async function LockerPage({ params }: PageProps<"/stations/[slug]
             {platformElevators.length === 0 ? (
               <p className="text-muted-foreground">No platform elevator is listed for this station.</p>
             ) : (
-              <ElevatorList elevators={platformElevators} />
+              <ElevatorList elevators={platformElevators} noteFor={noteFor} />
             )}
           </Step>
 
           <Step n={2} title="Walk to the locker">
             {locker.detailEn && <p className="text-lg font-medium">{locker.detailEn}</p>}
+            {hints.length > 0 && (
+              <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">
+                {hints.map((h) => (
+                  <li key={h}>{h}</li>
+                ))}
+              </ul>
+            )}
             <div className="flex flex-col gap-1">
               <p className="text-sm text-muted-foreground">In Korean, to show station staff if you need help:</p>
               <p lang="ko" className={locker.detailEn ? "text-sm" : "text-lg font-medium"}>
@@ -155,7 +180,7 @@ export default async function LockerPage({ params }: PageProps<"/stations/[slug]
         {exitElevators.length === 0 ? (
           <p className="text-muted-foreground">No street elevator is listed for this station.</p>
         ) : (
-          <ElevatorList elevators={exitElevators} />
+          <ElevatorList elevators={exitElevators} noteFor={noteFor} />
         )}
       </section>
     </>
@@ -181,7 +206,12 @@ function lines(text: string): string[] {
   return text.split(/;\s*/).map((l) => l.charAt(0).toUpperCase() + l.slice(1));
 }
 
-function ElevatorList({ elevators }: { elevators: Elevator[] }) {
+function exitsText(exits: string[]): string {
+  if (exits.length === 1) return `Exit ${exits[0]}`;
+  return `Exits ${exits.slice(0, -1).join(", ")} and ${exits.at(-1)}`;
+}
+
+function ElevatorList({ elevators, noteFor }: { elevators: Elevator[]; noteFor: (e: Elevator) => string | null }) {
   return (
     <ul className="flex flex-col gap-2">
       {elevators.map((e) => (
@@ -205,6 +235,7 @@ function ElevatorList({ elevators }: { elevators: Elevator[] }) {
             >
               {e.statusLabel}
             </Badge>
+            {noteFor(e) && <Badge>{noteFor(e)}</Badge>}
           </div>
           {e.kind === "exit" && e.detailEn && e.detailEn !== e.exit && <p className="text-sm">{e.detailEn}</p>}
           <p lang="ko" className="text-xs text-muted-foreground">
