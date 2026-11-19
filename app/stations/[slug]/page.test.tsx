@@ -31,7 +31,10 @@ afterEach(() => {
 
 test("when no locker at the station is free, says so first and lists the 3 nearest free lockers with distance", async () => {
   const { container } = render(
-    await StationPage({ params: Promise.resolve({ slug: "gangnam" }) } as PageProps<"/stations/[slug]">),
+    await StationPage({
+      params: Promise.resolve({ slug: "gangnam" }),
+      searchParams: Promise.resolve({}),
+    } as PageProps<"/stations/[slug]">),
   );
 
   const notice = screen.getByText("No free compartments at Gangnam right now");
@@ -48,4 +51,29 @@ test("when no locker at the station is free, says so first and lists the 3 neare
   ]);
   expect(within(nearby).getAllByText(/\d+(\.\d)? k?m away/)).toHaveLength(3);
   expect(container.textContent).not.toMatch(/Samseong/);
+});
+
+test("with the Large filter, a station with only small compartments free suggests nearby Large lockers", async () => {
+  const LARGE = { usePsbltyLrtypeLckrCnt: 2, usePsbltyMdtypeLckrCnt: 0, usePsbltySmttypeLckrCnt: 0 };
+  const SMALL = { usePsbltyLrtypeLckrCnt: 0, usePsbltyMdtypeLckrCnt: 0, usePsbltySmttypeLckrCnt: 9 };
+  const items = [
+    locker("G", "강남", 37.4979, 127.0276, SMALL),
+    locker("YEOKSAM", "역삼", 37.5006, 127.0364, SMALL),
+    locker("GYODAE", "교대", 37.4934, 127.0142, LARGE),
+  ];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => Response.json({ response: { header: { resultCode: "00" }, body: { items: { item: items } } } })),
+  );
+  render(
+    await StationPage({
+      params: Promise.resolve({ slug: "gangnam" }),
+      searchParams: Promise.resolve({ size: "large" }),
+    } as PageProps<"/stations/[slug]">),
+  );
+  expect(screen.getByText("No free Large compartments at Gangnam right now")).toBeInTheDocument();
+  const nearby = screen.getByRole("region", { name: "Nearby free lockers" });
+  expect(within(nearby).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual([
+    "/stations/seoul-nat-l-univ-of-education-court-prosecutors-office/lockers/GYODAE",
+  ]);
 });

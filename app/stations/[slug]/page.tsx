@@ -13,28 +13,33 @@ import {
   formatUpdatedAt,
   hasFree,
   lockerTitle,
+  sizeFilterFrom,
   todayFor,
   type Locker,
 } from "@/features/lockers";
 import { buildStations, findStation, type Station } from "@/features/stations";
 
-export default async function StationPage({ params }: PageProps<"/stations/[slug]">) {
+export default async function StationPage({ params, searchParams }: PageProps<"/stations/[slug]">) {
   const { slug } = await params;
+  const size = sizeFilterFrom((await searchParams).size);
+  const sizeWord = size ? "Large " : "";
 
   let lockers: Locker[];
   try {
     lockers = await fetchLockers();
   } catch {
-    return <LoadError retryHref={`/stations/${slug}`} />;
+    return <LoadError retryHref={`/stations/${slug}${size ? "?size=large" : ""}`} />;
   }
 
   const stations = buildStations(lockers.map((l) => l.stationKo));
   const station = findStation(stations, slug);
   if (!station) notFound();
 
-  const here = lockers.filter((l) => l.stationKo === station.nameKo);
-  const noneFree = !here.some(hasFree);
-  const nearby = noneFree ? findNearbyFree(lockers, station.nameKo) : [];
+  const atStation = lockers.filter((l) => l.stationKo === station.nameKo);
+  const noneFree = !atStation.some((l) => hasFree(l, size));
+  // With the Large filter, list only lockers that have a Large compartment free (all of them when none do).
+  const here = size && !noneFree ? atStation.filter((l) => hasFree(l, size)) : atStation;
+  const nearby = noneFree ? findNearbyFree(lockers, station.nameKo, 3, size) : [];
   const now = new Date();
   const stationOf = (l: Locker) => stations.find((s) => s.nameKo === l.stationKo);
 
@@ -46,17 +51,27 @@ export default async function StationPage({ params }: PageProps<"/stations/[slug
         </Link>
         <h1 className="text-2xl font-semibold">{station.nameEn}</h1>
         <p className="text-muted-foreground">
-          {here.length} locker {here.length === 1 ? "bank" : "banks"} in this station
+          {atStation.length} locker {atStation.length === 1 ? "bank" : "banks"} in this station
         </p>
+        {size && (
+          <p className="text-sm">
+            Showing lockers with a free Large compartment ·{" "}
+            <Link href={`/stations/${station.slug}`} className="text-primary underline underline-offset-4">
+              Show all sizes
+            </Link>
+          </p>
+        )}
       </section>
 
       {noneFree && (
         <Alert>
-          <AlertTitle>No free compartments at {station.nameEn} right now</AlertTitle>
+          <AlertTitle>
+            No free {sizeWord}compartments at {station.nameEn} right now
+          </AlertTitle>
           <AlertDescription>
             {nearby.length > 0
-              ? "These nearby stations have free lockers, nearest first (straight-line distance)."
-              : "No nearby station has a free locker either. Please try again later."}
+              ? `These nearby stations have free ${sizeWord}compartments, nearest first (straight-line distance).`
+              : `No nearby station has a free ${sizeWord}compartment either. Please try again later.`}
           </AlertDescription>
         </Alert>
       )}
@@ -70,7 +85,7 @@ export default async function StationPage({ params }: PageProps<"/stations/[slug
             lat: l.lat,
             lon: l.lon,
             label: s ? `${s.nameEn} · ${lockerTitle(l)}` : lockerTitle(l),
-            free: hasFree(l),
+            free: hasFree(l, size),
             href: s ? `/stations/${s.slug}/lockers/${l.id}` : undefined,
           };
         })}

@@ -5,15 +5,17 @@ import { LockerMap } from "@/components/locker-map";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { fetchLockers, findFreeNear, formatDistance, lockerTitle, type Locker } from "@/features/lockers";
+import { fetchLockers, findFreeNear, formatDistance, lockerTitle, sizeFilterFrom, type Locker } from "@/features/lockers";
 import { findArea, type Area } from "@/features/places";
 import { buildStations, searchStations, type Station } from "@/features/stations";
 
 type AreaResult = { area: Area; nearby: { locker: Locker; station: Station; distanceM: number }[] };
 
 export default async function Home({ searchParams }: PageProps<"/">) {
-  const { q } = await searchParams;
+  const { q, size: sizeParam } = await searchParams;
   const query = typeof q === "string" ? q.trim() : "";
+  const size = sizeFilterFrom(sizeParam);
+  const keep = size ? "?size=large" : "";
 
   let results: Station[] | null = null;
   let areaResult: AreaResult | null = null;
@@ -27,7 +29,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
       if (results.length === 0) {
         const area = await findArea(query);
         if (area) {
-          const nearby = findFreeNear(lockers, area).flatMap(({ locker, distanceM }) => {
+          const nearby = findFreeNear(lockers, area, 5, size).flatMap(({ locker, distanceM }) => {
             const station = stations.find((s) => s.nameKo === locker.stationKo);
             return station ? [{ locker, station, distanceM }] : [];
           });
@@ -49,7 +51,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         </p>
       </section>
 
-      <form action="/" className="flex gap-2" role="search">
+      <form id="search" action="/" className="flex gap-2" role="search">
         <Input
           name="q"
           defaultValue={query}
@@ -60,8 +62,19 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         />
         <Button type="submit">Search</Button>
       </form>
+      <label className="-mt-3 flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          name="size"
+          value="large"
+          form="search"
+          defaultChecked={size === "Large"}
+          className="size-4 accent-primary"
+        />
+        Only lockers with a free Large compartment (big suitcases)
+      </label>
 
-      {failed && <LoadError retryHref={`/?q=${encodeURIComponent(query)}`} />}
+      {failed && <LoadError retryHref={`/?q=${encodeURIComponent(query)}${size ? "&size=large" : ""}`} />}
 
       {results && results.length === 0 && !areaResult && !failed && (
         <p className="text-muted-foreground">
@@ -76,7 +89,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
           <ul className="flex flex-col gap-2">
             {results.map((s) => (
               <li key={s.slug}>
-                <Link href={`/stations/${s.slug}`} className="block">
+                <Link href={`/stations/${s.slug}${keep}`} className="block">
                   <Card className="transition-colors hover:bg-muted">
                     <CardContent className="font-medium">{s.nameEn}</CardContent>
                   </Card>
@@ -90,11 +103,15 @@ export default async function Home({ searchParams }: PageProps<"/">) {
       {areaResult && (
         <section className="flex flex-col gap-3" aria-label={`Lockers near ${areaResult.area.name}`}>
           <div>
-            <h2 className="text-lg font-medium">Free lockers near {areaResult.area.name}</h2>
+            <h2 className="text-lg font-medium">
+              Free {size ? "Large " : ""}lockers near {areaResult.area.name}
+            </h2>
             <p className="text-sm text-muted-foreground">Nearest first, straight-line distance from the area center.</p>
           </div>
           {areaResult.nearby.length === 0 ? (
-            <p className="text-muted-foreground">No free locker was found near this area right now.</p>
+            <p className="text-muted-foreground">
+              No free {size ? "Large " : ""}locker was found near this area right now.
+            </p>
           ) : (
             <>
               <LockerMap
