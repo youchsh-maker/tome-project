@@ -4,3 +4,4 @@
 
 - [ui-composition](ui-composition.md) — Read when choosing UI components, page composition, visual tokens, or custom interface boundaries.
 - [dependency-versions](dependency-versions.md) — Read when upgrading dependencies, pinning versions, or wondering why TypeScript stays on 6.x.
+- [locker-data-source](locker-data-source.md) — Read when choosing where locker availability, station facilities, or station names come from, or when expanding beyond Seoul Metro stations.
