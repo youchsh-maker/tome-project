@@ -10,6 +10,7 @@ import {
   fetchLockers,
   findFreeNear,
   formatDistance,
+  hasFree,
   describeFilter,
   filterFrom,
   filterQuery,
@@ -52,7 +53,8 @@ export default async function Home({ searchParams }: PageProps<"/">) {
     }
   }
 
-  // Before a search, show every station on one map. The map is a bonus, so a data failure just hides it.
+  // Before a search (or a search with only a filter), show every station on one map with the filter applied.
+  // The map is a bonus, so a data failure just hides it.
   let overview: MapPoint[] | null = null;
   if (!query) {
     try {
@@ -67,9 +69,10 @@ export default async function Home({ searchParams }: PageProps<"/">) {
                 lat: s.lat,
                 lon: s.lon,
                 label: station.nameEn,
-                free: s.total > 0,
+                free: lockers.some((l) => l.stationKo === s.stationKo && hasFree(l, filter)),
+                count: filter?.size ? s.available[filter.size] : s.total,
                 available: s.available,
-                href: `/stations/${station.slug}`,
+                href: `/stations/${station.slug}${keep ? `?${keep}` : ""}`,
                 linkLabel: "See lockers",
               },
             ]
@@ -96,7 +99,6 @@ export default async function Home({ searchParams }: PageProps<"/">) {
           placeholder="Station or area, e.g. Gangnam, Hannam-dong"
           aria-label="Station name"
           autoComplete="off"
-          required
         />
         <Button type="submit">Search</Button>
       </form>
@@ -105,10 +107,18 @@ export default async function Home({ searchParams }: PageProps<"/">) {
       {overview && overview.length > 0 && (
         <section className="flex flex-col gap-2" aria-label="Lockers across Seoul right now">
           <h2 className="text-lg font-medium">Lockers across Seoul right now</h2>
+          {filter && (
+            <p className="text-sm">Showing stations with {describeFilter(filter)}</p>
+          )}
           <p className="text-sm text-muted-foreground">
             Each dot is a station. Zoom in to see how many compartments are free, and tap one for sizes and its lockers.
           </p>
-          <LockerMap label="Map of lockers across Seoul" points={overview} variant="overview" />
+          <LockerMap
+            label="Map of lockers across Seoul"
+            points={overview}
+            variant="overview"
+            legend={filter ? ["Matches filter", "Doesn't match"] : undefined}
+          />
         </section>
       )}
 

@@ -90,3 +90,19 @@ test("shows an English error with retry when the area search service fails", asy
   await renderHome("hannam");
   expect(screen.getByRole("link", { name: "Try again" })).toHaveAttribute("href", "/?q=hannam");
 });
+
+test("with a filter and no search text, the overview map reflects the filter", async () => {
+  routeFetch(
+    [
+      { lckrId: "GN", stnNm: "강남", lineNm: "2호선", LAT: 37.4979, LOT: 127.0276, usePsbltyLrtypeLckrCnt: 3, usePsbltyMdtypeLckrCnt: 0, usePsbltySmttypeLckrCnt: 0 },
+      { lckrId: "YS", stnNm: "역삼", lineNm: "2호선", LAT: 37.5006, LOT: 127.0364, usePsbltyLrtypeLckrCnt: 1, usePsbltyMdtypeLckrCnt: 0, usePsbltySmttypeLckrCnt: 9 },
+    ],
+    [],
+  );
+  render(
+    await Home({ searchParams: Promise.resolve({ q: "", size: "large", min: "2" }), params: Promise.resolve({}) } as PageProps<"/">),
+  );
+  expect(screen.getByText("Showing stations with 2 or more free Large compartments")).toBeInTheDocument();
+  expect(screen.getByRole("region", { name: "Map of lockers across Seoul" })).toBeInTheDocument();
+  expect(screen.getByRole("textbox", { name: "Station name" })).not.toBeRequired();
+});

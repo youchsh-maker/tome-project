@@ -13,6 +13,8 @@ export type MapPoint = {
   /** Free compartments per size, shown in the marker popup. */
   available: { Large: number; Medium: number; Small: number };
   href?: string;
+  /** Number shown in the overview bubble; defaults to all free compartments. */
+  count?: number;
   /** Popup link text; defaults to "Locker info". */
   linkLabel?: string;
 };
@@ -25,10 +27,13 @@ export function LockerMap({
   points,
   label,
   variant = "default",
+  legend = ["Free now", "Full"],
 }: {
   points: MapPoint[];
   label: string;
   variant?: "default" | "overview";
+  /** Legend labels for free and full markers. */
+  legend?: [string, string];
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -64,7 +69,7 @@ export function LockerMap({
         if (variant === "overview") {
           const bubble = document.createElement("span");
           bubble.className = `locker-bubble ${p.free ? "locker-bubble-free" : "locker-bubble-full"}`;
-          bubble.textContent = `🧳 ${Large + Medium + Small}`;
+          bubble.textContent = `🧳 ${p.count ?? Large + Medium + Small}`;
           marker = L.marker([p.lat, p.lon], {
             icon: L.divIcon({ html: bubble, className: "", iconSize: undefined, iconAnchor: [8, 8] }),
             title: p.label,
@@ -110,11 +115,11 @@ export function LockerMap({
       <ul className="flex gap-4 text-xs text-muted-foreground" aria-label="Map legend">
         <li className="flex items-center gap-1.5">
           <span className={variant === "overview" ? "locker-legend-free size-3 rounded-full" : "size-3 rounded-full bg-primary"} />{" "}
-          Free now
+          {legend[0]}
         </li>
         <li className="flex items-center gap-1.5">
           <span className={variant === "overview" ? "locker-legend-full size-3 rounded-full" : "size-3 rounded-full bg-muted-foreground/60"} />{" "}
-          Full
+          {legend[1]}
         </li>
       </ul>
     </div>
