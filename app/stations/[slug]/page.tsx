@@ -86,6 +86,7 @@ export default async function StationPage({ params, searchParams }: PageProps<"/
             lon: l.lon,
             label: s ? `${s.nameEn} · ${lockerTitle(l)}` : lockerTitle(l),
             free: hasFree(l, size),
+            available: l.available,
             href: s ? `/stations/${s.slug}/lockers/${l.id}` : undefined,
           };
         })}

@@ -140,6 +140,7 @@ export default async function LockerPage({ params }: PageProps<"/stations/[slug]
                   lon: locker.lon,
                   label: `${station.nameEn} · ${lockerTitle(locker)}`,
                   free: hasFree(locker),
+                  available: locker.available,
                 },
               ]}
             />
