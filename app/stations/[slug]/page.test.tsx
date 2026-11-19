@@ -71,7 +71,7 @@ test("with the Large filter, a station with only small compartments free suggest
       searchParams: Promise.resolve({ size: "large" }),
     } as PageProps<"/stations/[slug]">),
   );
-  expect(screen.getByText("No free Large compartments at Gangnam right now")).toBeInTheDocument();
+  expect(screen.getByText("No lockers with a free Large compartment at Gangnam right now")).toBeInTheDocument();
   const nearby = screen.getByRole("region", { name: "Nearby free lockers" });
   expect(within(nearby).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual([
     "/stations/seoul-nat-l-univ-of-education-court-prosecutors-office/lockers/GYODAE",

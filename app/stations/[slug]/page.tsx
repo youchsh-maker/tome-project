@@ -12,8 +12,10 @@ import {
   formatDistance,
   formatUpdatedAt,
   hasFree,
+  describeFilter,
+  filterFrom,
+  filterQuery,
   lockerTitle,
-  sizeFilterFrom,
   todayFor,
   type Locker,
 } from "@/features/lockers";
@@ -21,14 +23,14 @@ import { buildStations, findStation, type Station } from "@/features/stations";
 
 export default async function StationPage({ params, searchParams }: PageProps<"/stations/[slug]">) {
   const { slug } = await params;
-  const size = sizeFilterFrom((await searchParams).size);
-  const sizeWord = size ? "Large " : "";
+  const filter = filterFrom(await searchParams);
+  const query = filterQuery(filter);
 
   let lockers: Locker[];
   try {
     lockers = await fetchLockers();
   } catch {
-    return <LoadError retryHref={`/stations/${slug}${size ? "?size=large" : ""}`} />;
+    return <LoadError retryHref={`/stations/${slug}${query ? `?${query}` : ""}`} />;
   }
 
   const stations = buildStations(lockers.map((l) => l.stationKo));
@@ -36,10 +38,10 @@ export default async function StationPage({ params, searchParams }: PageProps<"/
   if (!station) notFound();
 
   const atStation = lockers.filter((l) => l.stationKo === station.nameKo);
-  const noneFree = !atStation.some((l) => hasFree(l, size));
-  // With the Large filter, list only lockers that have a Large compartment free (all of them when none do).
-  const here = size && !noneFree ? atStation.filter((l) => hasFree(l, size)) : atStation;
-  const nearby = noneFree ? findNearbyFree(lockers, station.nameKo, 3, size) : [];
+  const noneFree = !atStation.some((l) => hasFree(l, filter));
+  // With a filter, list only lockers that match it (all of them when none do).
+  const here = filter && !noneFree ? atStation.filter((l) => hasFree(l, filter)) : atStation;
+  const nearby = noneFree ? findNearbyFree(lockers, station.nameKo, 3, filter) : [];
   const now = new Date();
   const stationOf = (l: Locker) => stations.find((s) => s.nameKo === l.stationKo);
 
@@ -53,11 +55,11 @@ export default async function StationPage({ params, searchParams }: PageProps<"/
         <p className="text-muted-foreground">
           {atStation.length} locker {atStation.length === 1 ? "bank" : "banks"} in this station
         </p>
-        {size && (
+        {filter && (
           <p className="text-sm">
-            Showing lockers with a free Large compartment ·{" "}
+            Showing lockers with {describeFilter(filter)} ·{" "}
             <Link href={`/stations/${station.slug}`} className="text-primary underline underline-offset-4">
-              Show all sizes
+              Show all lockers
             </Link>
           </p>
         )}
@@ -66,12 +68,14 @@ export default async function StationPage({ params, searchParams }: PageProps<"/
       {noneFree && (
         <Alert>
           <AlertTitle>
-            No free {sizeWord}compartments at {station.nameEn} right now
+            {filter
+              ? `No lockers with ${describeFilter(filter)} at ${station.nameEn} right now`
+              : `No free compartments at ${station.nameEn} right now`}
           </AlertTitle>
           <AlertDescription>
             {nearby.length > 0
-              ? `These nearby stations have free ${sizeWord}compartments, nearest first (straight-line distance).`
-              : `No nearby station has a free ${sizeWord}compartment either. Please try again later.`}
+              ? `These nearby stations have lockers with ${describeFilter(filter)}, nearest first (straight-line distance).`
+              : `No nearby station has a locker with ${describeFilter(filter)} either. Please try again later.`}
           </AlertDescription>
         </Alert>
       )}
@@ -85,7 +89,7 @@ export default async function StationPage({ params, searchParams }: PageProps<"/
             lat: l.lat,
             lon: l.lon,
             label: s ? `${s.nameEn} · ${lockerTitle(l)}` : lockerTitle(l),
-            free: hasFree(l, size),
+            free: hasFree(l, filter),
             available: l.available,
             href: s ? `/stations/${s.slug}/lockers/${l.id}` : undefined,
           };

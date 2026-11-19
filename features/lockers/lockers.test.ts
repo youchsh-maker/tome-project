@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  describeFilter,
+  filterFrom,
+  filterQuery,
   findFreeNear,
   summarizeByStation,
   findNearbyFree,
@@ -134,7 +137,15 @@ describe("availability", () => {
   it("with a size filter, counts only free compartments of that size", () => {
     const [smallOnly] = normalizeLockers([raw({ ...NONE, usePsbltySmttypeLckrCnt: 5 })]);
     const [oneLarge] = normalizeLockers([raw({ ...NONE, usePsbltyLrtypeLckrCnt: 1 })]);
-    expect([hasFree(smallOnly, "Large"), hasFree(oneLarge, "Large")]).toEqual([false, true]);
+    expect([hasFree(smallOnly, { size: "Large", min: 1 }), hasFree(oneLarge, { size: "Large", min: 1 })]).toEqual([false, true]);
+  });
+
+  it("with a minimum count, needs at least that many free compartments of the size, or in total for any size", () => {
+    const [l] = normalizeLockers([raw({ usePsbltyLrtypeLckrCnt: 2, usePsbltyMdtypeLckrCnt: 0, usePsbltySmttypeLckrCnt: 1 })]);
+    expect(hasFree(l, { size: "Large", min: 2 })).toBe(true);
+    expect(hasFree(l, { size: "Large", min: 3 })).toBe(false);
+    expect(hasFree(l, { min: 3 })).toBe(true);
+    expect(hasFree(l, { min: 5 })).toBe(false);
   });
 
   it("treats all-zero counts as no free compartment", () => {
@@ -203,8 +214,8 @@ describe("nearby fallback", () => {
       raw({ lckrId: "YEOKSAM_SMALL", stnNm: "역삼", LAT: 37.5006, LOT: 127.0364, ...NONE, usePsbltySmttypeLckrCnt: 4 }),
       raw({ lckrId: "GYODAE_LARGE", stnNm: "교대", LAT: 37.4934, LOT: 127.0142, ...NONE, usePsbltyLrtypeLckrCnt: 2 }),
     ]);
-    expect(findNearbyFree(sized, "강남", 3, "Large").map((n) => n.locker.id)).toEqual(["GYODAE_LARGE"]);
-    expect(findFreeNear(sized, { lat: 37.5006, lon: 127.0364 }, 5, "Large").map((n) => n.locker.id)).toEqual([
+    expect(findNearbyFree(sized, "강남", 3, { size: "Large", min: 1 }).map((n) => n.locker.id)).toEqual(["GYODAE_LARGE"]);
+    expect(findFreeNear(sized, { lat: 37.5006, lon: 127.0364 }, 5, { size: "Large", min: 1 }).map((n) => n.locker.id)).toEqual([
       "GYODAE_LARGE",
     ]);
   });
@@ -212,6 +223,7 @@ describe("nearby fallback", () => {
   it("formats distance in m or km", () => {
     expect(formatDistance(812)).toBe("810 m");
     expect(formatDistance(1530)).toBe("1.5 km");
+    expect(formatDistance(997)).toBe("1.0 km");
   });
 });
 
@@ -228,5 +240,24 @@ describe("station summary for the overview map", () => {
       { stationKo: "강남", lat: 37.495, lon: 127.025, available: { Large: 1, Medium: 3, Small: 7 }, total: 11 },
       { stationKo: "역삼", lat: 37.5, lon: 127.04, available: { Large: 0, Medium: 0, Small: 0 }, total: 0 },
     ]);
+  });
+});
+
+describe("search filter in the address", () => {
+  it("reads size and minimum count, ignoring values that are not offered", () => {
+    expect(filterFrom({ size: "large", min: "2" })).toEqual({ size: "Large", min: 2 });
+    expect(filterFrom({ size: "small" })).toEqual({ size: "Small", min: 1 });
+    expect(filterFrom({ min: "5" })).toEqual({ min: 5 });
+    expect(filterFrom({ size: "huge", min: "4" })).toBeUndefined();
+    expect(filterFrom({})).toBeUndefined();
+  });
+
+  it("keeps the filter in links and describes it in English", () => {
+    expect(filterQuery({ size: "Large", min: 2 })).toBe("size=large&min=2");
+    expect(filterQuery({ min: 3 })).toBe("min=3");
+    expect(filterQuery(undefined)).toBe("");
+    expect(describeFilter({ size: "Large", min: 2 })).toBe("2 or more free Large compartments");
+    expect(describeFilter({ size: "Medium", min: 1 })).toBe("a free Medium compartment");
+    expect(describeFilter({ min: 3 })).toBe("3 or more free compartments");
   });
 });
