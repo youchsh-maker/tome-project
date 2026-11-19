@@ -122,6 +122,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
                   lon: locker.lon,
                   label: `${station.nameEn} · ${lockerTitle(locker)}`,
                   free: true,
+                  available: locker.available,
                   href: `/stations/${station.slug}/lockers/${locker.id}`,
                 }))}
               />

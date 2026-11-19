@@ -10,6 +10,8 @@ export type MapPoint = {
   lon: number;
   label: string;
   free: boolean;
+  /** Free compartments per size, shown in the marker popup. */
+  available: { Large: number; Medium: number; Small: number };
   href?: string;
 };
 
@@ -36,11 +38,12 @@ export function LockerMap({ points, label }: { points: MapPoint[]; label: string
         const popup = document.createElement("div");
         const title = document.createElement("strong");
         title.textContent = p.label;
-        popup.append(title, document.createElement("br"), p.free ? "Free compartments now" : "Full right now");
+        const { Large, Medium, Small } = p.available;
+        popup.append(title, document.createElement("br"), `Free now: Large ${Large} · Medium ${Medium} · Small ${Small}`);
         if (p.href) {
           const link = document.createElement("a");
           link.href = p.href;
-          link.textContent = "View route";
+          link.textContent = "Locker info";
           popup.append(document.createElement("br"), link);
         }
         L.circleMarker([p.lat, p.lon], {
