@@ -12,6 +12,31 @@ import { buildStations, findStation } from "@/features/stations";
 const T_LOCKER_GUIDE = "https://english1.visitkorea.or.kr/enu/FU/KTO_EN_15.jsp?cid=2656890";
 const T_LOCKER_SITE = "https://tlocker.co.kr/";
 
+// English version of the operator's usage text (useMthdExpln), identical for every locker on 2026-11-19.
+const T_LOCKER_STEPS = [
+  {
+    title: "To store your luggage",
+    steps: [
+      "Install the T-Locker app",
+      "Scan the QR code on the locker",
+      "Choose the compartment to use",
+      "Pay the base fee",
+      "Check your password in the app and enter it on the lock",
+      "Put your luggage in",
+    ],
+  },
+  {
+    title: "To pick it up",
+    steps: [
+      "Open the T-Locker app",
+      "Select your locker in use",
+      "Pay the extra fee, if any",
+      "Check your password in the app and enter it on the lock",
+      "Take your luggage",
+    ],
+  },
+];
+
 export default async function LockerPage({ params }: PageProps<"/stations/[slug]/lockers/[lockerId]">) {
   const { slug, lockerId } = await params;
   const retryHref = `/stations/${slug}/lockers/${lockerId}`;
@@ -90,9 +115,21 @@ export default async function LockerPage({ params }: PageProps<"/stations/[slug]
 
           <Step n={3} title="Pay and unlock with the T-Locker app">
             <p className="text-sm">
-              These lockers are paid for and opened with the T-Locker app. Install it before you arrive, then scan the
-              QR code on the locker to start.
+              These lockers are paid for and opened with the T-Locker app. Install it before you arrive.
             </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {T_LOCKER_STEPS.map(({ title, steps }) => (
+                <div key={title} className="flex flex-col gap-1 rounded-lg bg-muted p-3">
+                  <h3 className="font-medium">{title}</h3>
+                  <ol className="list-decimal pl-5 text-sm">
+                    {steps.map((s) => (
+                      <li key={s}>{s}</li>
+                    ))}
+                  </ol>
+                </div>
+              ))}
+            </div>
+            <p className="text-sm text-muted-foreground">More help:</p>
             <ul className="flex flex-col gap-1 text-sm">
               <li>
                 <a href={T_LOCKER_GUIDE} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4">
