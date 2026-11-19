@@ -60,6 +60,12 @@ describe("locker normalization", () => {
     });
   });
 
+  it("adds the English location from the translation table, or null when the sentence is not in it", () => {
+    const [known, unknown] = normalizeLockers([raw(), raw({ lckrId: "N", lckrDtlLocNm: "새로 생긴 위치" })]);
+    expect(known.detailEn).toBe("Passage at Exit 1");
+    expect(unknown.detailEn).toBeNull();
+  });
+
   it("excludes Line 9 lockers, which are outside the service scope", () => {
     const ids = normalizeLockers([raw({ lineNm: "9호선", lckrId: "X" }), raw()]).map((l) => l.id);
     expect(ids).toEqual(["TL222A"]);

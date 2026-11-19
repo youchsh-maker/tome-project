@@ -19,17 +19,31 @@ function raw(over: Record<string, unknown> = {}) {
 }
 
 describe("station elevators", () => {
-  it("shows the nearest exit, floors, and status in English with the Korean location", () => {
+  it("shows a street exit elevator from street level down, with English and Korean location", () => {
     expect(normalizeElevators([raw()], "강남")).toEqual([
       {
         id: "1042202",
+        kind: "exit",
         exit: "Exit 1",
-        floors: "B1 → Ground",
+        floors: "Ground → B1",
         status: "in-service",
         statusLabel: "In service",
+        detailEn: "Exit 1",
         detailKo: "1번 출입구",
       },
     ]);
+  });
+
+  it("shows a platform elevator from the platform up, with where to get off the train", () => {
+    const [e] = normalizeElevators(
+      [raw({ vcntEntrcNo: "내부", dtlPstn: "역삼 방면8-1", bgngFlr: "B1", endFlrGrndUdgdSe: "지하", endFlr: "B2" })],
+      "강남",
+    );
+    expect(e).toMatchObject({ kind: "platform", floors: "B2 → B1", detailEn: "Car 8, door 1 (train toward Yeoksam)" });
+  });
+
+  it("has no English location for a sentence missing from the translation table", () => {
+    expect(normalizeElevators([raw({ dtlPstn: "새로 생긴 위치" })], "강남")[0].detailEn).toBeNull();
   });
 
   it("keeps only the chosen station, not partial-name matches", () => {
@@ -54,15 +68,15 @@ describe("station elevators", () => {
       [raw({ vcntEntrcNo: "내부", bgngFlr: "B2", endFlrGrndUdgdSe: "지하", endFlr: "B1" })],
       "강남",
     );
-    expect(e).toMatchObject({ exit: "Inside the station", floors: "B2 → B1" });
+    expect(e).toMatchObject({ kind: "platform", exit: "Inside the station", floors: "B2 → B1" });
   });
 
-  it("shows upper above-ground floors as nF", () => {
+  it("shows an elevated platform as nF, from the platform down", () => {
     const [e] = normalizeElevators(
-      [raw({ bgngFlrGrndUdgdSe: "지상", bgngFlr: "1", endFlrGrndUdgdSe: "지상", endFlr: "2" })],
+      [raw({ vcntEntrcNo: "내부", bgngFlrGrndUdgdSe: "지상", bgngFlr: "1", endFlrGrndUdgdSe: "지상", endFlr: "2" })],
       "강남",
     );
-    expect(e.floors).toBe("Ground → 2F");
+    expect(e.floors).toBe("2F → Ground");
   });
 
   it("distinguishes out-of-service and unknown status", () => {
