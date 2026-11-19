@@ -39,7 +39,7 @@ describe("station elevators", () => {
       [raw({ vcntEntrcNo: "내부", dtlPstn: "역삼 방면8-1", bgngFlr: "B1", endFlrGrndUdgdSe: "지하", endFlr: "B2" })],
       "강남",
     );
-    expect(e).toMatchObject({ kind: "platform", floors: "B2 → B1", detailEn: "Car 8, door 1 (train toward Yeoksam)" });
+    expect(e).toMatchObject({ kind: "platform", floors: "B2 → B1", detailEn: "Door 8-1 (train toward Yeoksam)" });
   });
 
   it("has no English location for a sentence missing from the translation table", () => {
