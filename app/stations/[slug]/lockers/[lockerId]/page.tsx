@@ -99,10 +99,6 @@ export default async function LockerPage({ params }: PageProps<"/stations/[slug]
         <h2 className="text-lg font-medium">Your route from the train</h2>
         <ol className="flex flex-col gap-3">
           <Step n={1} title="Get off the train and take an elevator up to the concourse">
-            <p className="text-sm text-muted-foreground">
-              Platform doors are numbered like 3-1 (car 3, door 1), shown on the floor and screen doors. Get off at
-              one of these numbers, on a train going the direction shown, and the elevator is right there.
-            </p>
             {platformElevators.length === 0 ? (
               <p className="text-muted-foreground">No platform elevator is listed for this station.</p>
             ) : (
@@ -119,6 +115,14 @@ export default async function LockerPage({ params }: PageProps<"/stations/[slug]
                 ))}
               </ul>
             )}
+            <div className="flex flex-col gap-2">
+              <h3 className="text-sm font-medium">Coming down from the street instead?</h3>
+              {exitElevators.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No street elevator is listed for this station.</p>
+              ) : (
+                <ElevatorList elevators={exitElevators} noteFor={noteFor} />
+              )}
+            </div>
             <div className="flex flex-col gap-1">
               <p className="text-sm text-muted-foreground">In Korean, to show station staff if you need help:</p>
               <p lang="ko" className={locker.detailEn ? "text-sm" : "text-lg font-medium"}>
@@ -172,17 +176,6 @@ export default async function LockerPage({ params }: PageProps<"/stations/[slug]
         </ol>
       </section>
 
-      <section className="flex flex-col gap-3" aria-label="Coming from the street">
-        <div>
-          <h2 className="text-lg font-medium">Coming from the street?</h2>
-          <p className="text-sm text-muted-foreground">These elevators connect the station exits to the concourse.</p>
-        </div>
-        {exitElevators.length === 0 ? (
-          <p className="text-muted-foreground">No street elevator is listed for this station.</p>
-        ) : (
-          <ElevatorList elevators={exitElevators} noteFor={noteFor} />
-        )}
-      </section>
     </>
   );
 }
@@ -217,7 +210,9 @@ function ElevatorList({ elevators, noteFor }: { elevators: Elevator[]; noteFor: 
       {elevators.map((e) => (
         <li
           key={e.id}
-          className={`flex flex-col gap-1 rounded-lg bg-muted p-3 ${e.status === "in-service" ? "" : "opacity-70"}`}
+          className={`flex flex-col gap-1 rounded-lg p-3 ${
+            noteFor(e) ? "bg-primary/10 ring-2 ring-primary/40" : "bg-primary/5 ring-1 ring-primary/15"
+          } ${e.status === "in-service" ? "" : "opacity-70"}`}
         >
           <div className="flex flex-wrap items-center gap-2">
             {e.kind === "exit" ? (
