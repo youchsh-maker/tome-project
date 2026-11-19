@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 import { LoadError } from "@/components/load-error";
 import { LockerMap } from "@/components/locker-map";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { fetchElevators, type Elevator } from "@/features/elevators";
 import { fetchLockers, formatUpdatedAt, hasFree, lockerTitle, todayFor, type Locker } from "@/features/lockers";
 import { buildStations, findStation } from "@/features/stations";
@@ -143,10 +145,16 @@ export default async function LockerPage({ params }: PageProps<"/stations/[slug]
             />
           </Step>
 
+          {locker.usesTLocker && (
           <Step n={3} title="Pay and unlock with the T-Locker app">
             <p className="text-sm">
               These lockers are paid for and opened with the T-Locker app. Install it before you arrive.
             </p>
+            <Collapsible className="flex flex-col gap-3">
+              <CollapsibleTrigger className={buttonVariants({ variant: "outline", size: "sm", className: "w-fit" })}>
+                How to use the T-Locker app
+              </CollapsibleTrigger>
+              <CollapsibleContent className="flex flex-col gap-3">
             <div className="grid gap-3 sm:grid-cols-2">
               {T_LOCKER_STEPS.map(({ title, steps }) => (
                 <div key={title} className="flex flex-col gap-1 rounded-lg bg-muted p-3">
@@ -172,7 +180,10 @@ export default async function LockerPage({ params }: PageProps<"/stations/[slug]
                 </a>
               </li>
             </ul>
+              </CollapsibleContent>
+            </Collapsible>
           </Step>
+          )}
         </ol>
       </section>
 
