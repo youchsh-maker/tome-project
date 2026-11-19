@@ -1,11 +1,19 @@
 import Link from "next/link";
 
 import { LoadError } from "@/components/load-error";
-import { LockerMap } from "@/components/locker-map";
+import { LockerMap, type MapPoint } from "@/components/locker-map";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { fetchLockers, findFreeNear, formatDistance, lockerTitle, sizeFilterFrom, type Locker } from "@/features/lockers";
+import {
+  fetchLockers,
+  findFreeNear,
+  formatDistance,
+  lockerTitle,
+  sizeFilterFrom,
+  summarizeByStation,
+  type Locker,
+} from "@/features/lockers";
 import { findArea, type Area } from "@/features/places";
 import { buildStations, searchStations, type Station } from "@/features/stations";
 
@@ -41,6 +49,34 @@ export default async function Home({ searchParams }: PageProps<"/">) {
     }
   }
 
+  // Before a search, show every station on one map. The map is a bonus, so a data failure just hides it.
+  let overview: MapPoint[] | null = null;
+  if (!query) {
+    try {
+      const lockers = await fetchLockers();
+      const stations = buildStations(lockers.map((l) => l.stationKo));
+      overview = summarizeByStation(lockers).flatMap((s) => {
+        const station = stations.find((st) => st.nameKo === s.stationKo);
+        return station
+          ? [
+              {
+                id: station.slug,
+                lat: s.lat,
+                lon: s.lon,
+                label: station.nameEn,
+                free: s.total > 0,
+                available: s.available,
+                href: `/stations/${station.slug}`,
+                linkLabel: "See lockers",
+              },
+            ]
+          : [];
+      });
+    } catch {
+      overview = null;
+    }
+  }
+
   return (
     <>
       <section className="flex flex-col gap-2">
@@ -72,6 +108,16 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         />
         Only lockers with a free Large compartment (big suitcases)
       </label>
+
+      {overview && overview.length > 0 && (
+        <section className="flex flex-col gap-2" aria-label="Lockers across Seoul right now">
+          <h2 className="text-lg font-medium">Lockers across Seoul right now</h2>
+          <p className="text-sm text-muted-foreground">
+            Each dot is a station. Zoom in to see how many compartments are free, and tap one for sizes and its lockers.
+          </p>
+          <LockerMap label="Map of lockers across Seoul" points={overview} variant="overview" />
+        </section>
+      )}
 
       {failed && <LoadError retryHref={`/?q=${encodeURIComponent(query)}${size ? "&size=large" : ""}`} />}
 

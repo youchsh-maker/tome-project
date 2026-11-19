@@ -281,3 +281,22 @@ export function normalizeMoisLockers(
   }
   return normalizeLockers(raw);
 }
+
+export type StationSummary = { stationKo: string; lat: number; lon: number; available: Record<Size, number>; total: number };
+/** One entry per station: free compartments added up across its lockers, placed at their average position. */
+export function summarizeByStation(lockers: Locker[]): StationSummary[] {
+  const groups = new Map<string, Locker[]>();
+  for (const l of lockers) groups.set(l.stationKo, [...(groups.get(l.stationKo) ?? []), l]);
+  return [...groups].map(([stationKo, ls]) => {
+    const sum = (size: Size) => ls.reduce((n, l) => n + l.available[size], 0);
+    const available = { Large: sum("Large"), Medium: sum("Medium"), Small: sum("Small") };
+    const avg = (pick: (l: Locker) => number) => Math.round((ls.reduce((n, l) => n + pick(l), 0) / ls.length) * 1e6) / 1e6;
+    return {
+      stationKo,
+      lat: avg((l) => l.lat),
+      lon: avg((l) => l.lon),
+      available,
+      total: available.Large + available.Medium + available.Small,
+    };
+  });
+}

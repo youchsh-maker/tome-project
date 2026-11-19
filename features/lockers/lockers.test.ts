@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   findFreeNear,
+  summarizeByStation,
   findNearbyFree,
   formatDistance,
   formatUpdatedAt,
@@ -211,5 +212,21 @@ describe("nearby fallback", () => {
   it("formats distance in m or km", () => {
     expect(formatDistance(812)).toBe("810 m");
     expect(formatDistance(1530)).toBe("1.5 km");
+  });
+});
+
+describe("station summary for the overview map", () => {
+  it("adds up free compartments per station across its lockers", () => {
+    const summary = summarizeByStation(
+      normalizeLockers([
+        raw({ lckrId: "A", stnNm: "강남", LAT: 37.49, LOT: 127.02, usePsbltyLrtypeLckrCnt: 1, usePsbltyMdtypeLckrCnt: 2, usePsbltySmttypeLckrCnt: 3 }),
+        raw({ lckrId: "B", stnNm: "강남", LAT: 37.5, LOT: 127.03, usePsbltyLrtypeLckrCnt: 0, usePsbltyMdtypeLckrCnt: 1, usePsbltySmttypeLckrCnt: 4 }),
+        raw({ lckrId: "C", stnNm: "역삼", LAT: 37.5, LOT: 127.04, ...NONE }),
+      ]),
+    );
+    expect(summary).toEqual([
+      { stationKo: "강남", lat: 37.495, lon: 127.025, available: { Large: 1, Medium: 3, Small: 7 }, total: 11 },
+      { stationKo: "역삼", lat: 37.5, lon: 127.04, available: { Large: 0, Medium: 0, Small: 0 }, total: 0 },
+    ]);
   });
 });
