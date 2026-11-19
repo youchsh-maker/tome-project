@@ -132,9 +132,15 @@ function LockerCard({
             <div key={size} className="rounded-lg bg-muted p-2">
               <dt className="text-muted-foreground">{size}</dt>
               <dd className="text-lg font-semibold">{locker.available[size]} free</dd>
+              {locker.dimensions[size] && (
+                <dd className="text-xs text-muted-foreground">{locker.dimensions[size]}</dd>
+              )}
             </div>
           ))}
         </dl>
+        {Object.keys(locker.dimensions).length > 0 && (
+          <p className="text-xs text-muted-foreground">Compartment size: width × depth × height</p>
+        )}
         <p>
           <span className="text-muted-foreground">Open today: </span>
           {today.hours}

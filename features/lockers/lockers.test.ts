@@ -34,6 +34,9 @@ function raw(over: Record<string, unknown> = {}) {
     lhldyOperEndTm: "000000",
     utztnCrgExpln: FEE,
     totCrtrDt: "2026-11-19T12:30:06",
+    lckrWdthLenExpln: "・ 소형 : 50(cm)\r\n・ 중형 : 50(cm)\r\n・ 대형 : 50(cm)",
+    lckrDpthExpln: "・ 소형 : 60(cm)\r\n・ 중형 : 60(cm)\r\n・ 대형 : 60(cm)",
+    lckrHgtExpln: "・ 소형 : 30(cm)\r\n・ 중형 : 45(cm)\r\n・ 대형 : 90(cm)",
     ...over,
   };
 }
@@ -64,6 +67,21 @@ describe("locker normalization", () => {
 
   it("shows the data timestamp in KST", () => {
     expect(formatUpdatedAt(normalizeLockers([raw()])[0])).toBe("2026-11-19 12:30 KST");
+  });
+});
+
+describe("compartment sizes", () => {
+  it("shows width × depth × height in cm for each size", () => {
+    expect(normalizeLockers([raw()])[0].dimensions).toEqual({
+      Large: "50 × 60 × 90 cm",
+      Medium: "50 × 60 × 45 cm",
+      Small: "50 × 60 × 30 cm",
+    });
+  });
+
+  it("omits a size whose dimensions cannot be read", () => {
+    const [l] = normalizeLockers([raw({ lckrHgtExpln: "・ 소형 : 30(cm)\r\n・ 중형 : 45(cm)" })]);
+    expect(l.dimensions).toEqual({ Medium: "50 × 60 × 45 cm", Small: "50 × 60 × 30 cm" });
   });
 });
 

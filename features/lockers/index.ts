@@ -19,6 +19,7 @@ export type Locker = {
   feeRaw: string;
   fees: Fees | null;
   hours: { weekday: [string, string]; saturday: [string, string]; holiday: [string, string] };
+  dimensions: Partial<Record<Size, string>>;
 };
 
 const SIZES: Size[] = ["Large", "Medium", "Small"];
@@ -49,6 +50,20 @@ function parseFees(text: string): Fees | null {
   return { baseHours: Number(baseHours[1]), weekday, weekend };
 }
 
+function cmFor(text: string, size: Size): string | undefined {
+  return text.replace(/\s+/g, "").match(new RegExp(`${SIZE_KO[size]}:(\\d+)\\(cm\\)`))?.[1];
+}
+
+/** Width × depth × height in cm per size, from the Korean size sentences. Unreadable sizes are left out. */
+function parseDimensions(r: RawLocker): Partial<Record<Size, string>> {
+  const out: Partial<Record<Size, string>> = {};
+  for (const size of SIZES) {
+    const cm = [r.lckrWdthLenExpln, r.lckrDpthExpln, r.lckrHgtExpln].map((v) => cmFor(str(v), size));
+    if (cm.every(Boolean)) out[size] = `${cm.join(" × ")} cm`;
+  }
+  return out;
+}
+
 /** Normalizes Seoul Metro locker items. Line 9 is outside the service scope. */
 export function normalizeLockers(raw: RawLocker[]): Locker[] {
   return raw
@@ -69,6 +84,7 @@ export function normalizeLockers(raw: RawLocker[]): Locker[] {
       updatedAt: str(r.totCrtrDt),
       feeRaw: str(r.utztnCrgExpln),
       fees: parseFees(str(r.utztnCrgExpln)),
+      dimensions: parseDimensions(r),
       hours: {
         weekday: [str(r.wkdayOperBgngTm), str(r.wkdayOperEndTm)],
         saturday: [str(r.satOperBgngTm), str(r.satOperEndTm)],
