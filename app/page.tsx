@@ -48,10 +48,6 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         <p className="text-muted-foreground">
           Enter a subway station or an area to see lockers with free space right now and the elevator route to them.
         </p>
-        <p className="text-sm text-muted-foreground">
-          Covers T-Locker luggage lockers in Seoul subway stations run by Seoul Metro (Lines 1–8, including a few
-          stations just outside Seoul). Line 9, Korail, AREX and Sinbundang stations are not included yet.
-        </p>
       </section>
 
       <form id="search" action="/" className="flex gap-2" role="search">
