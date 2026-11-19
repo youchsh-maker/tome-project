@@ -128,3 +128,16 @@
     @apply font-sans;
   }
 }
+/* Locker map markers (components/locker-map.tsx) */
+.locker-marker-free {
+  fill: var(--primary);
+  fill-opacity: 0.9;
+  stroke: var(--background);
+  stroke-width: 2;
+}
+.locker-marker-full {
+  fill: var(--muted-foreground);
+  fill-opacity: 0.6;
+  stroke: var(--background);
+  stroke-width: 2;
+}

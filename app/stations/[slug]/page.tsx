@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { LoadError } from "@/components/load-error";
+import { LockerMap } from "@/components/locker-map";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,6 +60,21 @@ export default async function StationPage({ params }: PageProps<"/stations/[slug
           </AlertDescription>
         </Alert>
       )}
+
+      <LockerMap
+        label={`Map of lockers at ${station.nameEn}`}
+        points={[...here, ...nearby.map((n) => n.locker)].map((l) => {
+          const s = l.stationKo === station.nameKo ? station : stationOf(l);
+          return {
+            id: l.id,
+            lat: l.lat,
+            lon: l.lon,
+            label: s ? `${s.nameEn} · ${lockerTitle(l)}` : lockerTitle(l),
+            free: hasFree(l),
+            href: s ? `/stations/${s.slug}/lockers/${l.id}` : undefined,
+          };
+        })}
+      />
 
       {noneFree && nearby.length > 0 && (
         <section className="flex flex-col gap-3" aria-label="Nearby free lockers">
