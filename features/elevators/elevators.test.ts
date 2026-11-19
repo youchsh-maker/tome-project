@@ -25,7 +25,9 @@ describe("station elevators", () => {
         id: "1042202",
         kind: "exit",
         exit: "Exit 1",
+        exits: ["1"],
         floors: "Ground → B1",
+        arrivesAt: "B1",
         status: "in-service",
         statusLabel: "In service",
         detailEn: "Exit 1",
@@ -77,6 +79,29 @@ describe("station elevators", () => {
       "강남",
     );
     expect(e.floors).toBe("2F → Ground");
+  });
+
+  it("uses the operator's exterior/interior label in the facility name before guessing from the exit field", () => {
+    const [street, platform] = normalizeElevators(
+      [
+        raw({ fcltNo: "a", fcltNm: "승강기)엘리베이터-종로5가 8,9번 출입구 외부#1", mngNo: "외부#1", vcntEntrcNo: "내부" }),
+        raw({ fcltNo: "b", fcltNm: "승강기)엘리베이터-남태령 1번 출구측 내부#2", mngNo: "내부#2", vcntEntrcNo: "1" }),
+      ],
+      "강남",
+    );
+    expect([street.kind, platform.kind]).toEqual(["exit", "platform"]);
+  });
+
+  it("exposes exit numbers and the floor the elevator arrives at in the station", () => {
+    const [exit, platform] = normalizeElevators(
+      [
+        raw({ fcltNo: "e", vcntEntrcNo: "1,10" }),
+        raw({ fcltNo: "p", vcntEntrcNo: "내부", bgngFlr: "B3", endFlrGrndUdgdSe: "지하", endFlr: "B2" }),
+      ],
+      "강남",
+    );
+    expect([exit.exits, exit.arrivesAt]).toEqual([["1", "10"], "B1"]);
+    expect([platform.exits, platform.arrivesAt]).toEqual([[], "B2"]);
   });
 
   it("distinguishes out-of-service and unknown status", () => {
