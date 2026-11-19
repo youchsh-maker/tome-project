@@ -29,6 +29,7 @@ export type Locker = {
   exits: string[];
   floor: string | null;
   gates: "inside" | "outside" | null;
+  usesTLocker: boolean;
 };
 
 const SIZES: Size[] = ["Large", "Medium", "Small"];
@@ -123,6 +124,7 @@ export function normalizeLockers(raw: RawLocker[]): Locker[] {
       exits: exitsIn(str(r.lckrDtlLocNm)),
       floor: floorIn(str(r.lckrDtlLocNm)),
       gates: gatesIn(str(r.lckrDtlLocNm)),
+      usesTLocker: /또타라커|T-?Locker/i.test(str(r.useMthdExpln)),
       hours: {
         weekday: [str(r.wkdayOperBgngTm), str(r.wkdayOperEndTm)],
         saturday: [str(r.satOperBgngTm), str(r.satOperEndTm)],

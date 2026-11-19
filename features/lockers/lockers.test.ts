@@ -67,6 +67,14 @@ describe("locker normalization", () => {
     expect(unknown.detailEn).toBeNull();
   });
 
+  it("marks lockers whose usage text says they are opened with the T-Locker app", () => {
+    const [tLocker, other] = normalizeLockers([
+      raw({ useMthdExpln: "또타라커 (T-Locker) 이용 방법 \r\n\r\n・ 보관\r\n\r\n1. 또타라커 (T-Locker) 앱 설치" }),
+      raw({ lckrId: "COIN", useMthdExpln: "카드 결제 후 보관함 이용" }),
+    ]);
+    expect([tLocker.usesTLocker, other.usesTLocker]).toEqual([true, false]);
+  });
+
   it("excludes Line 9 lockers, which are outside the service scope", () => {
     const ids = normalizeLockers([raw({ lineNm: "9호선", lckrId: "X" }), raw()]).map((l) => l.id);
     expect(ids).toEqual(["TL222A"]);
