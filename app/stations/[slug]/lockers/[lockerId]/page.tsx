@@ -82,7 +82,8 @@ export default async function LockerPage({ params }: PageProps<"/stations/[slug]
         <ol className="flex flex-col gap-3">
           <Step n={1} title="Get off the train and take an elevator up to the concourse">
             <p className="text-sm text-muted-foreground">
-              Board near one of these train doors so you step out next to an elevator.
+              Platform doors are numbered like 3-1 (car 3, door 1), shown on the floor and screen doors. Get off at
+              one of these numbers, on a train going the direction shown, and the elevator is right there.
             </p>
             {platformElevators.length === 0 ? (
               <p className="text-muted-foreground">No platform elevator is listed for this station.</p>
@@ -175,6 +176,11 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
   );
 }
 
+/** Splits a translated location with several platform positions ("…; …") into one line each. */
+function lines(text: string): string[] {
+  return text.split(/;\s*/).map((l) => l.charAt(0).toUpperCase() + l.slice(1));
+}
+
 function ElevatorList({ elevators }: { elevators: Elevator[] }) {
   return (
     <ul className="flex flex-col gap-2">
@@ -184,7 +190,15 @@ function ElevatorList({ elevators }: { elevators: Elevator[] }) {
           className={`flex flex-col gap-1 rounded-lg bg-muted p-3 ${e.status === "in-service" ? "" : "opacity-70"}`}
         >
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium">{e.kind === "exit" ? e.exit : (e.detailEn ?? "Elevator")}</span>
+            {e.kind === "exit" ? (
+              <span className="font-medium">{e.exit}</span>
+            ) : (
+              <span className="flex flex-col font-medium">
+                {lines(e.detailEn ?? "Elevator").map((l) => (
+                  <span key={l}>{l}</span>
+                ))}
+              </span>
+            )}
             <span className="text-muted-foreground">{e.floors}</span>
             <Badge
               variant={e.status === "out-of-service" ? "destructive" : e.status === "unknown" ? "outline" : "secondary"}
