@@ -140,15 +140,24 @@ function distanceM(a: { lat: number; lon: number }, b: { lat: number; lon: numbe
   return 2 * 6371000 * Math.asin(Math.sqrt(h));
 }
 
+/** Free lockers nearest to a point (e.g. an area center), straight-line distance. */
+export function findFreeNear(lockers: Locker[], point: { lat: number; lon: number }, limit = 5) {
+  return lockers
+    .filter(hasFree)
+    .map((locker) => ({ locker, distanceM: distanceM(point, locker) }))
+    .sort((a, b) => a.distanceM - b.distanceM)
+    .slice(0, limit);
+}
+
 /** Free lockers at other stations, nearest to the given station first (straight-line distance). */
 export function findNearbyFree(lockers: Locker[], stationKo: string, limit = 3) {
   const origin = lockers.find((l) => l.stationKo === stationKo);
   if (!origin) return [];
-  return lockers
-    .filter((l) => l.stationKo !== stationKo && hasFree(l))
-    .map((locker) => ({ locker, distanceM: distanceM(origin, locker) }))
-    .sort((a, b) => a.distanceM - b.distanceM)
-    .slice(0, limit);
+  return findFreeNear(
+    lockers.filter((l) => l.stationKo !== stationKo),
+    origin,
+    limit,
+  );
 }
 
 export function formatDistance(m: number): string {

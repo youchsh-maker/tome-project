@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  findFreeNear,
   findNearbyFree,
   formatDistance,
   formatUpdatedAt,
@@ -149,6 +150,12 @@ describe("nearby fallback", () => {
     const [first] = findNearbyFree(lockers, "강남");
     expect(first.distanceM).toBeGreaterThan(700);
     expect(first.distanceM).toBeLessThan(900);
+  });
+
+  it("finds free lockers nearest to a point such as an area center", () => {
+    const near = findFreeNear(lockers, { lat: 37.5006, lon: 127.0364 }, 2);
+    expect(near.map((n) => n.locker.id)).toEqual(["YEOKSAM", "SEOLLEUNG"]);
+    expect(near[0].distanceM).toBeLessThan(10);
   });
 
   it("formats distance in m or km", () => {

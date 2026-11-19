@@ -9,7 +9,7 @@ export function LoadError({ retryHref }: { retryHref: string }) {
     <Alert variant="destructive">
       <AlertTitle>We couldn&apos;t load locker data right now</AlertTitle>
       <AlertDescription className="flex flex-col items-start gap-3">
-        <p>The Seoul Metro data service did not respond. This does not mean the lockers are full.</p>
+        <p>A data service (Seoul Metro or the area search) did not respond. This does not mean the lockers are full.</p>
         <Link href={retryHref} className={buttonVariants({ variant: "outline", size: "sm" })}>
           Try again
         </Link>
