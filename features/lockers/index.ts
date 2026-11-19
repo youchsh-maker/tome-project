@@ -1,4 +1,4 @@
-import { fetchFacilityItems } from "@/lib/data-go-kr";
+import { fetchFacilityItems, fetchMoisItems } from "@/lib/data-go-kr";
 
 import locationEn from "./location-en.json";
 
@@ -209,11 +209,75 @@ export function lockerTitle(l: Locker): string {
     .join(" · ");
 }
 
+/**
+ * Seoul Metro lockers, plus the few Seoul Metro-run stations only the MOIS nationwide data has.
+ * The MOIS source is supplementary: if it fails, the Seoul Metro lockers are still returned.
+ */
 export async function fetchLockers(): Promise<Locker[]> {
-  return normalizeLockers(await fetchFacilityItems("/getFcLckr"));
+  const [seoulMetro, mois] = await Promise.all([
+    fetchFacilityItems("/getFcLckr"),
+    Promise.all([
+      fetchMoisItems("/locker_info_v2"),
+      fetchMoisItems("/locker_realtime_use_v2"),
+      fetchMoisItems("/locker_detail_info_v2"),
+    ]).catch(() => null),
+  ]);
+  const lockers = normalizeLockers(seoulMetro);
+  if (!mois) return lockers;
+  const [info, realtime, detail] = mois;
+  return [...lockers, ...normalizeMoisLockers({ info, realtime, detail }, new Set(seoulMetro.map((r) => str(r.lckrId))))];
 }
 
 /** Reads the `size` search param; only "large" is offered as a filter. */
 export function sizeFilterFrom(value: unknown): Size | undefined {
   return value === "large" ? "Large" : undefined;
+}
+
+type MoisRow = Record<string, unknown>;
+
+/**
+ * Subway lockers from the MOIS nationwide API (data.go.kr 15142469) that the Seoul Metro data lacks,
+ * such as Seoul Metro stations in Gyeonggi. Only "N호선 역명" lockers with real-time counts are kept.
+ */
+export function normalizeMoisLockers(
+  data: { info: MoisRow[]; realtime: MoisRow[]; detail: MoisRow[] },
+  knownIds: Set<string>,
+): Locker[] {
+  const byId = (rows: MoisRow[]) => new Map(rows.map((r) => [str(r.stlckId), r]));
+  const realtime = byId(data.realtime);
+  const detail = byId(data.detail);
+  const raw: RawLocker[] = [];
+  for (const r of data.info) {
+    const id = str(r.stlckId);
+    const station = str(r.stlckRprsPstnNm).match(/^(\d호선) ([^(]+)/);
+    const rt = realtime.get(id);
+    if (!station || !rt || knownIds.has(id)) continue;
+    const d = detail.get(id) ?? {};
+    const t = str(rt.totDt);
+    raw.push({
+      lckrId: id,
+      lineNm: station[1],
+      stnNm: station[2].trim(),
+      lckrRprsLocNm: r.stlckRprsPstnNm,
+      lckrDtlLocNm: r.stlckDtlPstnNm,
+      LAT: r.lat,
+      LOT: r.lot,
+      wkdayOperBgngTm: r.wkdyOperBgngTm,
+      wkdayOperEndTm: r.wkdyOperEndTm,
+      satOperBgngTm: r.satOperBgngTm,
+      satOperEndTm: r.satOperEndTm,
+      lhldyOperBgngTm: r.lhldyOperBgngTm,
+      lhldyOperEndTm: r.lhldyOperEndTm,
+      usePsbltyLrtypeLckrCnt: rt.usePsbltyLrgszStlckCnt,
+      usePsbltyMdtypeLckrCnt: rt.usePsbltyMdmszStlckCnt,
+      usePsbltySmttypeLckrCnt: rt.usePsbltySmlszStlckCnt,
+      totCrtrDt: t.length >= 14 ? `${t.slice(0, 4)}-${t.slice(4, 6)}-${t.slice(6, 8)}T${t.slice(8, 10)}:${t.slice(10, 12)}:${t.slice(12, 14)}` : "",
+      utztnCrgExpln: d.utztnCrgExpln,
+      lckrWdthLenExpln: d.stlckWdthLenExpln,
+      lckrDpthExpln: d.stlckDpthExpln,
+      lckrHgtExpln: d.stlckHgtExpln,
+      useMthdExpln: d.useMthdExpln,
+    });
+  }
+  return normalizeLockers(raw);
 }
