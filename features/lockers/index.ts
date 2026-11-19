@@ -1,5 +1,9 @@
 import { fetchFacilityItems } from "@/lib/data-go-kr";
 
+import locationEn from "./location-en.json";
+
+const EN = locationEn as Record<string, string>;
+
 export type RawLocker = Record<string, unknown>;
 export type Size = "Large" | "Medium" | "Small";
 
@@ -11,6 +15,8 @@ export type Locker = {
   stationKo: string;
   line: string;
   name: string;
+  /** English location from the pre-translated table; null when the sentence is not in the table. */
+  detailEn: string | null;
   detailKo: string;
   available: Record<Size, number>;
   lat: number;
@@ -73,6 +79,7 @@ export function normalizeLockers(raw: RawLocker[]): Locker[] {
       stationKo: str(r.stnNm),
       line: str(r.lineNm),
       name: str(r.lckrRprsLocNm),
+      detailEn: EN[str(r.lckrDtlLocNm).trim()] ?? null,
       detailKo: str(r.lckrDtlLocNm),
       available: {
         Large: num(r.usePsbltyLrtypeLckrCnt),

@@ -3,12 +3,14 @@ import { notFound } from "next/navigation";
 
 import { LoadError } from "@/components/load-error";
 import { LockerMap } from "@/components/locker-map";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchElevators, type Elevator } from "@/features/elevators";
 import { fetchLockers, formatUpdatedAt, hasFree, lockerTitle, todayFor, type Locker } from "@/features/lockers";
 import { buildStations, findStation } from "@/features/stations";
+
+const T_LOCKER_GUIDE = "https://english1.visitkorea.or.kr/enu/FU/KTO_EN_15.jsp?cid=2656890";
+const T_LOCKER_SITE = "https://tlocker.co.kr/";
 
 export default async function LockerPage({ params }: PageProps<"/stations/[slug]/lockers/[lockerId]">) {
   const { slug, lockerId } = await params;
@@ -32,6 +34,8 @@ export default async function LockerPage({ params }: PageProps<"/stations/[slug]
   }
 
   const today = todayFor(locker, new Date());
+  const platformElevators = elevators.filter((e) => e.kind === "platform");
+  const exitElevators = elevators.filter((e) => e.kind === "exit");
 
   return (
     <>
@@ -48,70 +52,115 @@ export default async function LockerPage({ params }: PageProps<"/stations/[slug]
         </p>
       </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Where the locker is</CardTitle>
-          <CardDescription>Location in Korean. You can show this to station staff if you need help.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          <p lang="ko" className="text-lg font-medium">
-            {locker.detailKo}
-          </p>
-          <LockerMap
-            label={`Map of ${lockerTitle(locker)} at ${station.nameEn}`}
-            points={[
-              {
-                id: locker.id,
-                lat: locker.lat,
-                lon: locker.lon,
-                label: `${station.nameEn} · ${lockerTitle(locker)}`,
-                free: hasFree(locker),
-              },
-            ]}
-          />
-        </CardContent>
-      </Card>
+      <section className="flex flex-col gap-3" aria-label="Your route from the train">
+        <h2 className="text-lg font-medium">Your route from the train</h2>
+        <ol className="flex flex-col gap-3">
+          <Step n={1} title="Get off the train and take an elevator up to the concourse">
+            <p className="text-sm text-muted-foreground">
+              Board near one of these train doors so you step out next to an elevator.
+            </p>
+            {platformElevators.length === 0 ? (
+              <p className="text-muted-foreground">No platform elevator is listed for this station.</p>
+            ) : (
+              <ElevatorList elevators={platformElevators} />
+            )}
+          </Step>
 
-      <Alert>
-        <AlertTitle>Pay and unlock with the T-Locker app</AlertTitle>
-        <AlertDescription>
-          These lockers are paid for and opened with the T-Locker app. Scan the QR code on the locker to start.
-        </AlertDescription>
-      </Alert>
+          <Step n={2} title="Walk to the locker">
+            {locker.detailEn && <p className="text-lg font-medium">{locker.detailEn}</p>}
+            <div className="flex flex-col gap-1">
+              <p className="text-sm text-muted-foreground">In Korean, to show station staff if you need help:</p>
+              <p lang="ko" className={locker.detailEn ? "text-sm" : "text-lg font-medium"}>
+                {locker.detailKo}
+              </p>
+            </div>
+            <LockerMap
+              label={`Map of ${lockerTitle(locker)} at ${station.nameEn}`}
+              points={[
+                {
+                  id: locker.id,
+                  lat: locker.lat,
+                  lon: locker.lon,
+                  label: `${station.nameEn} · ${lockerTitle(locker)}`,
+                  free: hasFree(locker),
+                },
+              ]}
+            />
+          </Step>
 
-      <section className="flex flex-col gap-3" aria-label="Elevators in this station">
-        <div>
-          <h2 className="text-lg font-medium">Elevators in this station</h2>
-          <p className="text-sm text-muted-foreground">
-            Use these to reach the locker without stairs. The nearest elevator to the locker is not recorded, so all
-            are listed.
-          </p>
-        </div>
-        {elevators.length === 0 ? (
-          <p className="text-muted-foreground">No elevator information is available for this station.</p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {elevators.map((e) => (
-              <li key={e.id}>
-                <Card className={e.status === "in-service" ? undefined : "opacity-70"}>
-                  <CardContent className="flex flex-col gap-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium">{e.exit}</span>
-                      <span className="text-muted-foreground">{e.floors}</span>
-                      <Badge variant={e.status === "out-of-service" ? "destructive" : e.status === "unknown" ? "outline" : "secondary"}>
-                        {e.statusLabel}
-                      </Badge>
-                    </div>
-                    <p lang="ko" className="text-sm text-muted-foreground">
-                      {e.detailKo}
-                    </p>
-                  </CardContent>
-                </Card>
+          <Step n={3} title="Pay and unlock with the T-Locker app">
+            <p className="text-sm">
+              These lockers are paid for and opened with the T-Locker app. Install it before you arrive, then scan the
+              QR code on the locker to start.
+            </p>
+            <ul className="flex flex-col gap-1 text-sm">
+              <li>
+                <a href={T_LOCKER_GUIDE} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4">
+                  How to use T-Locker (VisitKorea, English)
+                </a>
               </li>
-            ))}
-          </ul>
+              <li>
+                <a href={T_LOCKER_SITE} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4">
+                  T-Locker official site and app download (Korean)
+                </a>
+              </li>
+            </ul>
+          </Step>
+        </ol>
+      </section>
+
+      <section className="flex flex-col gap-3" aria-label="Coming from the street">
+        <div>
+          <h2 className="text-lg font-medium">Coming from the street?</h2>
+          <p className="text-sm text-muted-foreground">These elevators connect the station exits to the concourse.</p>
+        </div>
+        {exitElevators.length === 0 ? (
+          <p className="text-muted-foreground">No street elevator is listed for this station.</p>
+        ) : (
+          <ElevatorList elevators={exitElevators} />
         )}
       </section>
     </>
+  );
+}
+
+function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+  return (
+    <li>
+      <Card>
+        <CardHeader>
+          <CardDescription>Step {n}</CardDescription>
+          <CardTitle>{title}</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">{children}</CardContent>
+      </Card>
+    </li>
+  );
+}
+
+function ElevatorList({ elevators }: { elevators: Elevator[] }) {
+  return (
+    <ul className="flex flex-col gap-2">
+      {elevators.map((e) => (
+        <li
+          key={e.id}
+          className={`flex flex-col gap-1 rounded-lg bg-muted p-3 ${e.status === "in-service" ? "" : "opacity-70"}`}
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium">{e.kind === "exit" ? e.exit : (e.detailEn ?? "Elevator")}</span>
+            <span className="text-muted-foreground">{e.floors}</span>
+            <Badge
+              variant={e.status === "out-of-service" ? "destructive" : e.status === "unknown" ? "outline" : "secondary"}
+            >
+              {e.statusLabel}
+            </Badge>
+          </div>
+          {e.kind === "exit" && e.detailEn && e.detailEn !== e.exit && <p className="text-sm">{e.detailEn}</p>}
+          <p lang="ko" className="text-xs text-muted-foreground">
+            {e.detailKo}
+          </p>
+        </li>
+      ))}
+    </ul>
   );
 }
